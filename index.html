@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Golf Chipping Rule Calculator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f7f6;
+      color: #000;
+      margin: 0;
+      padding: 12px;
+      transition: background 0.3s, color 0.3s;
+    }
+    body.dark {
+      background: #121212;
+      color: #e0e0e0;
+    }
+    h1 {
+      text-align: center;
+      font-size: 1.3rem;
+      margin: 8px 0 6px 0;
+    }
+    .top-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      padding: 0 10px;
+    }
+    .toggle-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.9rem;
+    }
+    .card {
+      background: white;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    body.dark .card {
+      background: #1e1e1e;
+    }
+    label {
+      display: block;
+      margin-top: 12px;
+      font-weight: bold;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      margin-top: 4px;
+      font-size: 1rem;
+    }
+    input[type=checkbox] {
+      width: auto;
+      margin: 0;
+    }
+    input[type=range] {
+      padding: 0;
+    }
+    button {
+      width: 100%;
+      margin-top: 16px;
+      padding: 12px;
+      font-size: 1.1rem;
+      background: #2e7d32;
+      color: white;
+      border: none;
+      border-radius: 6px;
+    }
+    .reset-btn {
+      background: #555;
+    }
+    .result {
+      margin-top: 12px;
+      padding: 12px;
+      background: #eef4ee;
+      border-radius: 6px;
+    }
+    body.dark .result {
+      background: #2a2a2a;
+    }
+    .small {
+      font-size: 0.85rem;
+      color: inherit;
+    }
+    .slider-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: #555;
+    }
+    body.dark .slider-labels {
+      color: #aaa;
+    }
+    .center {
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Rule of 12 Chipping Calculator</h1>
+
+<div class="top-controls">
+  <div class="toggle-group">
+    <input type="checkbox" id="darkToggle" onchange="toggleDarkMode()">
+    <span>Dark</span>
+  </div>
+
+  <div class="toggle-group">
+    <span>Yards</span>
+    <input type="checkbox" id="unitToggle" onchange="updateUnits(); autoCalculate();">
+  </div>
+</div>
+
+<div class="card">
+
+  <div class="center small">Baseline</div>
+  <input type="range" id="rule" min="9" max="15" step="1" value="12" oninput="updateRuleDisplay(); autoCalculate();">
+  <div class="slider-labels">
+    <span>Slow</span>
+    <strong id="ruleValue">12</strong>
+    <span>Fast</span>
+  </div>
+
+  <label>Total distance to hole (<span id="unitLabel">ft</span>)</label>
+  <input type="number" id="totalDistance" placeholder="e.g. 15" oninput="autoCalculate()">
+
+  <label>Desired landing distance (<span id="unitLabel2">ft</span>)</label>
+  <input type="number" id="carryDistance" placeholder="e.g. 7.5" oninput="autoCalculate()">
+
+  <label>Safe miss preference</label>
+  <select id="safeMiss" onchange="autoCalculate()">
+    <option value="neutral">Neutral</option>
+    <option value="short">Miss Short</option>
+    <option value="long">Miss Long</option>
+  </select>
+
+</div>
+
+<div class="card result" id="output" style="display:none;"></div>
+
+<button class="reset-btn" id="resetBtn" style="display:none;" onclick="resetAll()">Reset</button>
+
+<script>
+  const clubs = [
+    { name: "6 Iron", number: 6 },
+    { name: "7 Iron", number: 7 },
+    { name: "8 Iron", number: 8 },
+    { name: "9 Iron", number: 9 },
+    { name: "Pitching Wedge (46°)", number: 10 },
+    { name: "Gap Wedge (52°)", number: 10.75 },
+    { name: "Sand Wedge (57°)", number: 11.5 }
+  ];
+
+  let unit = "ft";
+
+  function updateUnits() {
+    const toggle = document.getElementById("unitToggle").checked;
+    unit = toggle ? "yd" : "ft";
+    document.getElementById("unitLabel").innerText = unit;
+    document.getElementById("unitLabel2").innerText = unit;
+  }
+
+  function updateRuleDisplay() {
+    document.getElementById("ruleValue").innerText = document.getElementById("rule").value;
+  }
+
+  function toggleDarkMode() {
+    document.body.classList.toggle("dark");
+  }
+
+  function autoCalculate() {
+    const totalVal = document.getElementById("totalDistance").value;
+    const carryVal = document.getElementById("carryDistance").value;
+    if (totalVal && carryVal) calculate();
+  }
+
+  function calculate() {
+    let total = parseFloat(document.getElementById("totalDistance").value);
+    let carry = parseFloat(document.getElementById("carryDistance").value);
+    const rule = parseFloat(document.getElementById("rule").value);
+    const safeMiss = document.getElementById("safeMiss").value;
+
+    if (!total || !carry || carry >= total) return;
+
+    if (unit === "yd") {
+      total *= 3;
+      carry *= 3;
+    }
+
+    const ratio = total / carry;
+    let targetClub = rule - ratio;
+
+    if (safeMiss === "short") targetClub += 0.2;
+    if (safeMiss === "long") targetClub -= 0.2;
+
+    const sorted = [...clubs].sort((a, b) =>
+      Math.abs(a.number - targetClub) - Math.abs(b.number - targetClub)
+    );
+
+    const best = sorted[0];
+    const second = sorted[1];
+
+    const bestCarry = (total / (rule - best.number)).toFixed(1);
+    const secondCarry = (total / (rule - second.number)).toFixed(1);
+
+    const displayBestCarry = unit === "yd" ? (bestCarry / 3).toFixed(1) : bestCarry;
+    const displaySecondCarry = unit === "yd" ? (secondCarry / 3).toFixed(1) : secondCarry;
+
+    document.getElementById("output").style.display = "block";
+    document.getElementById("resetBtn").style.display = "block";
+
+    document.getElementById("output").innerHTML = `
+      <strong>Roll Ratio:</strong> ${ratio.toFixed(2)} : 1<br>
+      <strong>Target Club No.:</strong> ${targetClub.toFixed(2)}<br><br>
+
+      <strong>Best Option:</strong><br>
+      ${best.name}<br>
+      Land ball at ~ <strong>${displayBestCarry} ${unit}</strong><br><br>
+
+      <strong>Alternative Option:</strong><br>
+      ${second.name}<br>
+      Land ball at ~ <strong>${displaySecondCarry} ${unit}</strong><br><br>
+
+      <span class="small">Safe miss bias applied: ${safeMiss}</span>
+    `;
+  }
+
+  function resetAll() {
+    document.getElementById("totalDistance").value = "";
+    document.getElementById("carryDistance").value = "";
+    document.getElementById("safeMiss").value = "neutral";
+    document.getElementById("output").style.display = "none";
+    document.getElementById("resetBtn").style.display = "none";
+  }
+</script>
+
+</body>
+</html>
